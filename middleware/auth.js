@@ -6,13 +6,18 @@ const { SECRET_KEY } = require("../config");
 /** Middleware: Authenticate user. */
 
 function authenticateJWT(req, res, next) {
-  try {
-    const tokenFromBody = req.body._token;
-    const payload = jwt.verify(tokenFromBody, SECRET_KEY);
-    req.user = payload; // create a current user
-    return next();
-  } catch (err) {
-    return next();
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const payload = jwt.verify(token, SECRET_KEY);
+      req.user = payload; // create a current user
+      return next();
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+  } else {
+    return res.status(401).json({ message: "Authorization header not found" });
   }
 }
 
@@ -20,7 +25,7 @@ function authenticateJWT(req, res, next) {
 
 function ensureLoggedIn(req, res, next) {
   if (!req.user) {
-    return next({ status: 401, message: "Unauthorized" });
+    return res.status(401).json({ message: "Unauthorized" });
   } else {
     return next();
   }
@@ -33,11 +38,11 @@ function ensureCorrectUser(req, res, next) {
     if (req.user.username === req.params.username) {
       return next();
     } else {
-      return next({ status: 401, message: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized" });
     }
   } catch (err) {
     // errors would happen here if we made a request and req.user is undefined
-    return next({ status: 401, message: "Unauthorized" });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 }
 // end

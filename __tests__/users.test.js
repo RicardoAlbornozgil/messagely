@@ -2,16 +2,15 @@ const db = require("../db");
 const User = require("../models/user");
 const Message = require("../models/message");
 
-
 describe("Test User class", function () {
   beforeEach(async function () {
-    await db.query("DELETE FROM messages");
-    await db.query("DELETE FROM users");
+    await db.pool.query("DELETE FROM messages");
+    await db.pool.query("DELETE FROM users");
     let u = await User.register({
       username: "test",
       password: "password",
       first_name: "Test",
-      last_name: "Testy",
+      last_name: "Tester",
       phone: "+14155550000",
     });
   });
