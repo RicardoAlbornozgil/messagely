@@ -3,6 +3,8 @@
 const { Client } = require("pg");
 const { DB_URI } = require("./config");
 
+
+
 const client = new Client({
   connectionString: DB_URI,
   ssl: {
@@ -10,6 +12,10 @@ const client = new Client({
   }
 });
 
-client.connect();
+// Connect to PostgreSQL only once
+client.connect()
+  .then(() => console.log('Connected to PostgreSQL'))
+  .catch(err => console.error('Error connecting to PostgreSQL:', err.message));
+
 
 module.exports = client;

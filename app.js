@@ -7,6 +7,7 @@ const { authenticateJWT } = require("./middleware/auth");
 
 const ExpressError = require("./expressError")
 const app = express();
+const client = require('./db');
 
 // allow both form-encoded and json body parsing
 app.use(express.json());
@@ -28,7 +29,12 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/messages", messageRoutes);
 
-/** 404 handler */
+client.query('SELECT * FROM users, messages')
+  .then(result => console.log(result.rows))
+  .catch(err => console.error('Error executing query:', err));
+
+
+  /** 404 handler */
 
 app.use(function(req, res, next) {
   const err = new ExpressError("Not Found", 404);
@@ -49,3 +55,5 @@ app.use(function(err, req, res, next) {
 
 
 module.exports = app;
+
+
