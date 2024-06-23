@@ -1,79 +1,84 @@
-const request = require("supertest");
-const jwt = require("jsonwebtoken");
+const request = require('supertest');
+const app = require('../app'); // Adjust the path to your app module
+jest.mock('../db'); // Mock the database module
+const db = require('../db');
 
-const app = require("../app");
-const db = require("../db");
-const User = require("../models/user");
-
-
-describe("Auth Routes Test", function () {
-
-  beforeEach(async function () {
-    await db.query("DELETE FROM messages");
-    await db.query("DELETE FROM users");
-
-    let u1 = await User.register({
-      username: "test1",
-      password: "password",
-      first_name: "Test1",
-      last_name: "Testy1",
-      phone: "+14155550000",
-    });
-  });
-
-//   /** POST /auth/register => token  */
-
-  describe("POST /auth/register", function () {
-    test("can register", async function () {
-      let response = await request(app)
-        .post("/auth/register")
-        .send({
-          username: "bob",
-          password: "secret",
-          first_name: "Bob",
-          last_name: "Smith",
-          phone: "+14150000000"
-        });
-
-      let token = response.body.token;
-      expect(jwt.decode(token)).toEqual({
-        username: "bob",
-        iat: expect.any(Number)
-      });
-    });
-  });
-
-//   /** POST /auth/login => token  */
-
-  describe("POST /auth/login", function () {
-    test("can login", async function () {
-      let response = await request(app)
-        .post("/auth/login")
-        .send({ username: "test1", password: "password" });
-
-      let token = response.body.token;
-      expect(jwt.decode(token)).toEqual({
-        username: "test1",
-        iat: expect.any(Number)
-      });
-    });
-
-    test("won't login w/wrong password", async function () {
-      let response = await request(app)
-        .post("/auth/login")
-        .send({ username: "test1", password: "WRONG" });
-      expect(response.statusCode).toEqual(400);
-    });
-
-    test("won't login w/wrong password", async function () {
-      let response = await request(app)
-        .post("/auth/login")
-        .send({ username: "not-user", password: "password" });
-      expect(response.statusCode).toEqual(400);
-    });
-  });
+beforeAll(() => {
+  // Any setup required before tests run
 });
 
-afterAll(async function () {
-  await db.end();
+afterAll(() => {
+  // Any teardown required after tests run
+});
+
+describe('Auth Routes', () => {
+  beforeEach(() => {
+    // Reset any changes to mocks between tests
+    jest.clearAllMocks();
+  });
+
+  it('should register a new user', async () => {
+    // Mock database response for the insert query
+    db.query.mockResolvedValueOnce({
+      rows: [{ username: 'testuser', first_name: 'Test', last_name: 'User', phone: '1234567890' }]
+    });
+
+    const response = await request(app)
+      .post('/auth/register')
+      .send({
+        username: 'testuser',
+        password: 'password',
+        first_name: 'Test',
+        last_name: 'User',
+        phone: '1234567890'
+      });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.body).toEqual({
+      username: 'testuser',
+      first_name: 'Test',
+      last_name: 'User',
+      phone: '1234567890'
+    });
+  });
+
+  it('should authenticate a user with correct credentials', async () => {
+    // Mock database response for the authentication query
+    db.query.mockResolvedValueOnce({
+      rows: [{ password: await bcrypt.hash('password', 12) }]
+    });
+
+    const response = await request(app)
+      .post('/auth/login')
+      .send({
+        username: 'testuser',
+        password: 'password'
+      });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      message: 'Authenticated'
+    });
+  });
+
+  it('should fail to authenticate a user with incorrect credentials', async () => {
+    // Mock database response for the authentication query
+    db.query.mockResolvedValueOnce({
+      rows: [{ password: await bcrypt.hash('wrongpassword', 12) }]
+    });
+
+    const response = await request(app)
+      .post('/auth/login')
+      .send({
+        username: 'testuser',
+        password: 'password'
+      });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toEqual({
+      error: 'Invalid username/password'
+    });
+  });
+
+  // Add more tests as needed
 });

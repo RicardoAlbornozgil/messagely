@@ -1,51 +1,40 @@
-/** Express app for message.ly. */
-
-
 const express = require("express");
 const cors = require("cors");
-const { authenticateJWT } = require("./middleware/auth");
-
-const ExpressError = require("./expressError")
+const { authenticateJWT, ensureLoggedIn } = require("./middleware/auth");
+const ExpressError = require("./expressError");
 const app = express();
-const client = require('./db');
 
 // allow both form-encoded and json body parsing
 app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 
 // allow connections to all routes from any browser
 app.use(cors());
 
-// get auth token for all routes
-app.use(authenticateJWT);
-
 /** routes */
-
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const messageRoutes = require("./routes/messages");
 
+// Public route
+app.get('/', (req, res) => {
+  res.send("Welcome to the home page!");
+});
+
 app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
-app.use("/messages", messageRoutes);
+app.use("/users", authenticateJWT, ensureLoggedIn, userRoutes);
+app.use("/messages", authenticateJWT,ensureLoggedIn, messageRoutes);
 
-client.query('SELECT * FROM users, messages')
-  .then(result => console.log(result.rows))
-  .catch(err => console.error('Error executing query:', err));
-
-
-  /** 404 handler */
-
-app.use(function(req, res, next) {
+/** 404 handler */
+app.use(function (req, res, next) {
   const err = new ExpressError("Not Found", 404);
   return next(err);
 });
 
 /** general error handler */
-
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
   res.status(err.status || 500);
-  if (process.env.NODE_ENV != "test") console.error(err.stack);
+  if (process.env.NODE_ENV !== "test") console.error(err.stack);
 
   return res.json({
     error: err,
@@ -53,7 +42,4 @@ app.use(function(err, req, res, next) {
   });
 });
 
-
 module.exports = app;
-
-

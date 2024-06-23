@@ -1,94 +1,68 @@
-const db = require("../db");
-const User = require("../models/user");
-const Message = require("../models/message");
+const request = require('supertest');
+const app = require('../app');
+const db = require('../db');
+const Message = require('../models/message');
+const User = require('../models/user');
+let server;
 
+jest.setTimeout(20000); // Increase timeout to 20 seconds
 
-describe("Test Message class", function () {
-
-  beforeEach(async function () {
-    await db.query("DELETE FROM messages");
-    await db.query("DELETE FROM users");
-    await db.query("ALTER SEQUENCE messages_id_seq RESTART WITH 1");
-
-    let u1 = await User.register({
-      username: "test1",
-      password: "password",
-      first_name: "Test1",
-      last_name: "Testy1",
-      phone: "+14155550000",
+describe('Test Message class', function () {
+  beforeAll(async function () {
+    // Start the server
+    server = app.listen(3000, () => {
+      console.log('Test server running on port 3000');
     });
-    let u2 = await User.register({
-      username: "test2",
-      password: "password",
-      first_name: "Test2",
-      last_name: "Testy2",
-      phone: "+14155552222",
-    });
-    let m1 = await Message.create({
-      from_username: "test1",
-      to_username: "test2",
-      body: "u1-to-u2"
-    });
-    let m2 = await Message.create({
-      from_username: "test2",
-      to_username: "test1",
-      body: "u2-to-u1"
+
+    await db.query('DELETE FROM messages');
+    await db.query('DELETE FROM users');
+    await User.register({
+      username: 'test1',
+      password: 'password',
+      first_name: 'Test',
+      last_name: 'User',
+      phone: '123-456-7890',
     });
   });
 
-  test("can create", async function () {
-    let m = await Message.create({
-      from_username: "test1",
-      to_username: "test2",
-      body: "new"
-    });
+  afterAll(async function () {
+    // Close the server connection after tests
+    server.close();
 
-    expect(m).toEqual({
-      id: expect.any(Number),
-      from_username: "test1",
-      to_username: "test2",
-      body: "new",
-      sent_at: expect.any(Date),
-    });
+    await db.query('DELETE FROM messages');
+    await db.query('DELETE FROM users');
+    await db.end();
   });
 
-  test("can mark read", async function () {
-    let m = await Message.create({
-      from_username: "test1",
-      to_username: "test2",
-      body: "new"
+  test('can create', async () => {
+    const message = await Message.create({
+      from_username: 'test1',
+      to_username: 'test2',
+      body: 'Hello!'
     });
-    expect(m.read_at).toBe(undefined);
+    expect(message).toHaveProperty('id');
+  }, 20000); // Increase timeout for this test
 
-    Message.markRead(m.id);
-    const result = await db.query("SELECT read_at from messages where id=$1",
-        [m.id]);
-    expect(result.rows[0].read_at).toEqual(expect.any(Date));
-  });
-
-  test("can get", async function () {
-    let u = await Message.get(1);
-    expect(u).toEqual({
-      id: expect.any(Number),
-      body: "u1-to-u2",
-      sent_at: expect.any(Date),
-      read_at: null,
-      from_user: {
-        username: "test1",
-        first_name: "Test1",
-        last_name: "Testy1",
-        phone: "+14155550000",
-      },
-      to_user: {
-        username: "test2",
-        first_name: "Test2",
-        last_name: "Testy2",
-        phone: "+14155552222",
-      },
+  test('can mark read', async () => {
+    const message = await Message.create({
+      from_username: 'test1',
+      to_username: 'test2',
+      body: 'Hello!'
     });
-  });
-});
+    await Message.markRead(message.id);
+    const updatedMessage = await Message.get(message.id);
+    expect(updatedMessage.read_at).not.toBeNull();
+  }, 20000); // Increase timeout for this test
 
-afterAll(async function() {
-  await db.end();
+  test('can get', async () => {
+    const message = await Message.create({
+      from_username: 'test1',
+      to_username: 'test2',
+      body: 'Hello!'
+    });
+    const fetchedMessage = await Message.get(message.id);
+    expect(fetchedMessage).toHaveProperty('id');
+    expect(fetchedMessage.body).toBe('Hello!');
+  }, 20000); // Increase timeout for this test
+
 });

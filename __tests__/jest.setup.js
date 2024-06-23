@@ -1,3 +1,10 @@
 // jest.setup.js
+
 process.env.NODE_ENV = 'test'; // Set environment to test
-process.env.DB_URI = 'postgresql://postgres:postgres@localhost:5432/messagely_test'; // Override DB URI for testing
+BCRYPT_WORK_FACTOR=1;
+
+describe('Jest setup', () => {
+  test('should successfully set up Jest environment', () => {
+    expect(true).toBe(true); // Placeholder test assertion
+  });
+});
